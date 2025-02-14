@@ -1,0 +1,44 @@
+- name: Provision a Web Server
+  hosts: web_servers
+  become: yes
+  tasks:
+  
+    - name: Install Apache (on Debian/Ubuntu)
+      apt:
+        name: apache2
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Nginx (on RedHat/CentOS)
+      yum:
+        name: nginx
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Ensure Apache/Nginx is running
+      service:
+        name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'nginx' }}"
+        state: started
+        enabled: yes
+
+    - name: Create a new user
+      user:
+        name: devuser
+        state: present
+        groups: sudo
+        append: yes
+        shell: /bin/bash
+
+    - name: Set up SSH key for the new user
+      authorized_key:
+        user: devuser
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    - name: Set correct permissions for web directory
+      file:
+        path: /var/www/html
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
